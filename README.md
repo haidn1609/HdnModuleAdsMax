@@ -360,6 +360,19 @@ AdsManager.showMediationDebugger(context) // kiểm tra adapter và network khi 
 
 Các hàm show / load / preload và callback giữ nguyên.
 
+## App demo
+
+Module `app` có màn test mọi loại ads (open, inter, inter splash, force inter, banner, native, native full,
+native collapse, reward) và nút mở Mediation Debugger.
+
+1. Điền SDK key, GAID máy test và ad unit vào
+   [`app/src/main/java/com/hdn/theme/testmoduleads/AdIds.kt`](app/src/main/java/com/hdn/theme/testmoduleads/AdIds.kt).
+2. Thêm adapter mediation cần test vào `app/build.gradle.kts` (và AdMob App ID vào manifest nếu dùng `google-adapter`).
+3. Chạy `./gradlew :app:installDebug`, xem log với tag `Ads_log` và `Ads_revenue`.
+
+Demo bỏ qua bước consent UMP cho gọn; app thật phải xin consent trước `AdsManager.initialize`.
+Layout native mẫu: `app/src/main/res/layout/template_native_*.xml`.
+
 ## Publish (JitPack)
 
 1. Push lên GitHub (`haidn1609/HdnModuleAdsMax`).
