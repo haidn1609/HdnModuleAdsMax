@@ -365,8 +365,23 @@ Các hàm show / load / preload và callback giữ nguyên.
 Module `app` có màn test mọi loại ads (open, inter, inter splash, force inter, banner, native, native full,
 native collapse, reward) và nút mở Mediation Debugger.
 
-1. Điền SDK key, GAID máy test và ad unit vào
-   [`app/src/main/java/com/hdn/theme/testmoduleads/AdIds.kt`](app/src/main/java/com/hdn/theme/testmoduleads/AdIds.kt).
+1. ID lấy từ Firebase Remote Config của project test (`app/google-services.json`, package
+   `com.ezt.theme.testmoduleads`), giống demo HdnModuleAds. Trên console Firebase, khai báo:
+
+   | Key | Giá trị |
+   |---|---|
+   | `applovin_sdk_key` | SDK key AppLovin |
+   | `applovin_test_devices` | JSON array GAID máy test, vd `["gaid1"]` |
+   | `using_case_test_value` | tên key chứa JSON ID ads, vd `config_id_ads` |
+   | `config_id_ads` (tên ở trên) | JSON ID MAX, mỗi slot là list (waterfall) |
+
+   ```json
+   {
+     "appOpen": ["..."], "interstitial": ["..."], "interSplash": ["..."], "rewarded": ["..."],
+     "banner": ["..."], "bannerCollapse": ["..."],
+     "native": ["..."], "nativeCollapse": ["..."], "nativeDialogFull": ["..."]
+   }
+   ```
 2. Thêm adapter mediation cần test vào `app/build.gradle.kts` (và AdMob App ID vào manifest nếu dùng `google-adapter`).
 3. Chạy `./gradlew :app:installDebug`, xem log với tag `Ads_log` và `Ads_revenue`.
 

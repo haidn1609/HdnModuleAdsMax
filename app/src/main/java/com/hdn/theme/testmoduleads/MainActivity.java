@@ -42,14 +42,17 @@ public class MainActivity extends AppCompatActivity {
                     + " " + adValue.getAdId() + " " + (adValue.getAdError() != null ? adValue.getAdError().getMessage() : ""));
             return null;
         });
-        AdIds.INSTANCE.apply();
-        // ponytail: demo bỏ qua consent UMP; app thật xin consent trước khi initialize (xem README)
-        AdsManager.initialize(this, AdIds.SDK_KEY, AdIds.INSTANCE.getTEST_DEVICE_IDS(), () -> {
-            Toast.makeText(this, "MAX init done", Toast.LENGTH_SHORT).show();
-            InterAds.initInterAds(this, new ArrayList<>(), false, null, null);
-            InterSplashAds.initInterAds(this, new ArrayList<>(), null);
-            OpenAds.initOpenAds(this, new ArrayList<>(), null);
-            return null;
+        // ID ads + SDK key lấy từ Firebase Remote Config (giống demo HdnModuleAds)
+        RemoteManager.initRemoteConfig(() -> {
+            Toast.makeText(this, "config done", Toast.LENGTH_SHORT).show();
+            // ponytail: demo bỏ qua consent UMP; app thật xin consent trước khi initialize (xem README)
+            AdsManager.initialize(this, RemoteManager.getSdkKey(), RemoteManager.getTestDeviceIds(), () -> {
+                Toast.makeText(this, "MAX init done", Toast.LENGTH_SHORT).show();
+                InterAds.initInterAds(this, new ArrayList<>(), false, null, null);
+                InterSplashAds.initInterAds(this, new ArrayList<>(), null);
+                OpenAds.initOpenAds(this, new ArrayList<>(), null);
+                return null;
+            });
         });
     }
 
