@@ -1,128 +1,79 @@
 package com.hdn.theme.testmoduleads;
 
-import android.annotation.SuppressLint;
-
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings;
 import com.google.gson.Gson;
 import com.google.gson.JsonSyntaxException;
 import com.hdn.adsmodule.ads.AdsManager;
 
-import java.util.Collections;
 import java.util.List;
 
+/**
+ * Remote Config: `using_case_test_value` chứa tên key, key đó chứa JSON ID (xem docs/config_ads_max.json),
+ * rồi set SDK key + ID cho AdsManager. Fetch lỗi / JSON hỏng vẫn chạy với ID mặc định trong MaxTestIds.
+ */
 public class RemoteManager {
-    public static Gson gson = new Gson();
-    public static final String iap_enabled = "iap_enabled";
-    public static final String ads_enabled = "enable_ads";
-    public static final String intern_ads_time = "intern_ads_time";
     public static final String use_case_test = "using_case_test_value";
-    public static final String config_native_show = "config_native_show";
-    public static final String applovin_sdk_key = "applovin_sdk_key";
-    // GAID máy test, JSON array: ["gaid1","gaid2"]
-    public static final String applovin_test_devices = "applovin_test_devices";
-    private static String sdkKey = "";
-    private static List<String> testDeviceIds = Collections.emptyList();
-
-    public static String getSdkKey() {
-        return sdkKey;
-    }
-
-    public static List<String> getTestDeviceIds() {
-        return testDeviceIds;
-    }
-    private static ConfigIdRemote configIdRemote = new ConfigIdRemote();
+    private static final Gson gson = new Gson();
+    private static MaxConfig config = new MaxConfig();
 
     public static void initRemoteConfig(Runnable complete) {
-        FirebaseRemoteConfig mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
-        FirebaseRemoteConfigSettings configSettings = new FirebaseRemoteConfigSettings.Builder()
+        FirebaseRemoteConfig remoteConfig = FirebaseRemoteConfig.getInstance();
+        remoteConfig.setConfigSettingsAsync(new FirebaseRemoteConfigSettings.Builder()
                 .setMinimumFetchIntervalInSeconds(0)
-                .build();
-        mFirebaseRemoteConfig.setConfigSettingsAsync(configSettings);
-        mFirebaseRemoteConfig.setDefaultsAsync(R.xml.remote_config_defaults);
-
-        mFirebaseRemoteConfig.fetchAndActivate()
-                .addOnCompleteListener(task -> remoteConfig(mFirebaseRemoteConfig, complete));
+                .build());
+        remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults);
+        remoteConfig.fetchAndActivate().addOnCompleteListener(task -> {
+            // Giữ logic demo cũ: using_case_test_value = tên key chứa JSON ID (vd config_ads_max)
+            String useCaseTest = remoteConfig.getString(use_case_test).trim();
+            config = parse(useCaseTest.isEmpty() ? "" : remoteConfig.getString(useCaseTest));
+            initIds();
+            if (complete != null) complete.run();
+        });
     }
 
-    @SuppressLint("WrongConstant")
-    private static void remoteConfig(FirebaseRemoteConfig mFirebaseRemoteConfig, Runnable complete) {
+    public static String getSdkKey() {
+        String key = config.getSdkKey();
+        return key == null || key.trim().isEmpty() ? MaxTestIds.SDK_KEY : key.trim();
+    }
+
+    // Rl = ID mặc định của demo, Rm = ID trên Firebase (rỗng thì thư viện dùng Rl)
+    private static void initIds() {
+        AdsManager.setOpaIdRl(MaxTestIds.APP_OPEN);
+        AdsManager.setOpaIdRm(remote(config.getAoa()));
+
+        AdsManager.setItaIdRl(MaxTestIds.INTERSTITIAL);
+        AdsManager.setItaIdRm(remote(config.getIntInapp()));
+
+        AdsManager.setItsaIdRl(MaxTestIds.INTER_SPLASH);
+        AdsManager.setItsaIdRm(remote(config.getIntSplash()));
+
+        AdsManager.setRwaIdRl(MaxTestIds.REWARDED);
+        AdsManager.setRwaIdRm(remote(config.getRvInapp()));
+
+        // Config chưa có banner collapse riêng -> dùng chung bn_inapp
+        AdsManager.setBnaIdRl(MaxTestIds.BANNER);
+        AdsManager.setBnaIdRm(remote(config.getBnInapp()));
+        AdsManager.setBncaIdRl(MaxTestIds.BANNER);
+        AdsManager.setBncaIdRm(remote(config.getBnInapp()));
+
+        AdsManager.addNative("native_home", MaxTestIds.NATIVE, remote(config.getNtInapp()));
+        AdsManager.addNative("native_collapse", MaxTestIds.NATIVE_COLLAPSE, remote(config.getNtClp()));
+        AdsManager.addNative("native_dialog_full", MaxTestIds.NATIVE_FULL, remote(config.getNtOnbFull()));
+        AdsManager.addNative("native_lang1", MaxTestIds.NATIVE_LANG1, remote(config.getNtLang1()));
+        AdsManager.addNative("native_lang2", MaxTestIds.NATIVE_LANG2, remote(config.getNtLang2()));
+    }
+
+    private static String remote(List<String> ids) {
+        return gson.toJson(MaxTestIds.maxIds(ids));
+    }
+
+    private static MaxConfig parse(String json) {
         try {
-            // [START get_config_values]
-            boolean iap_enabled = mFirebaseRemoteConfig.getBoolean(RemoteManager.iap_enabled);
-            boolean ads_enabled = mFirebaseRemoteConfig.getBoolean(RemoteManager.ads_enabled);
-            String intern_ads_time = mFirebaseRemoteConfig.getString(RemoteManager.intern_ads_time);
-            String useCaseTest = mFirebaseRemoteConfig.getString(RemoteManager.use_case_test);
-            String jsonSetupId = mFirebaseRemoteConfig.getString(useCaseTest);
-            String jsonSetupNativeShow = mFirebaseRemoteConfig.getString(config_native_show);
-            sdkKey = mFirebaseRemoteConfig.getString(applovin_sdk_key).trim();
-            testDeviceIds = parseList(mFirebaseRemoteConfig.getString(applovin_test_devices));
-            //init data obj
-            configIdRemote = parseConfigIdRemote(jsonSetupId);
-            initRemoteId();
-        } catch (Exception ignored) {
-        } finally {
-            if (complete != null) {
-                complete.run();
-            }
-        }
-    }
-
-    private static void initRemoteId() {
-        AdsManager.setOpaIdRl(encodeAdIds(configIdRemote.getAppOpen()));
-        AdsManager.setOpaIdRm(encodeAdIds(configIdRemote.getAppOpen()));
-
-        AdsManager.setBnaIdRl(encodeAdIds(configIdRemote.getBanner()));
-        AdsManager.setBnaIdRm(encodeAdIds(configIdRemote.getBanner()));
-
-        AdsManager.setBncaIdRl(encodeAdIds(configIdRemote.getBannerCollapse()));
-        AdsManager.setBncaIdRm(encodeAdIds(configIdRemote.getBannerCollapse()));
-
-        AdsManager.setItaIdRl(encodeAdIds(configIdRemote.getInterstitial()));
-        AdsManager.setItaIdRm(encodeAdIds(configIdRemote.getInterstitial()));
-
-        AdsManager.setItsaIdRl(encodeAdIds(configIdRemote.getInterSplash()));
-        AdsManager.setItsaIdRm(encodeAdIds(configIdRemote.getInterSplash()));
-
-        AdsManager.setRwaIdRl(encodeAdIds(configIdRemote.getRewarded()));
-        AdsManager.setRwaIdRm(encodeAdIds(configIdRemote.getRewarded()));
-
-        AdsManager.addNative("native_dialog_full",
-                encodeAdIds(configIdRemote.getNativeDialogFull()),
-                encodeAdIds(configIdRemote.getNativeDialogFull()));
-        AdsManager.addNative("native_home",
-                encodeAdIds(configIdRemote.getNative()),
-                encodeAdIds(configIdRemote.getNative()));
-        AdsManager.addNative("native_collapse",
-                encodeAdIds(configIdRemote.getNativeCollapse()),
-                encodeAdIds(configIdRemote.getNativeCollapse()));
-    }
-
-    private static ConfigIdRemote parseConfigIdRemote(String json) {
-        try {
-            if (json == null || json.isEmpty()) {
-                return new ConfigIdRemote();
-            }
-            return gson.fromJson(json, ConfigIdRemote.class);
+            MaxConfig parsed = gson.fromJson(json, MaxConfig.class);
+            return parsed != null ? parsed : new MaxConfig();
         } catch (JsonSyntaxException e) {
-            return new ConfigIdRemote();
+            return new MaxConfig();
         }
-    }
-
-    // JSON hỏng không được chặn phần set ID phía sau
-    private static List<String> parseList(String json) {
-        try {
-            String[] values = gson.fromJson(json, String[].class);
-            return values != null ? java.util.Arrays.asList(values) : Collections.emptyList();
-        } catch (JsonSyntaxException e) {
-            return Collections.emptyList();
-        }
-    }
-
-    private static String encodeAdIds(List<String> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return gson.toJson(Collections.emptyList());
-        }
-        return gson.toJson(ids);
     }
 }

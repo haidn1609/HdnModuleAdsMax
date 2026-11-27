@@ -9,7 +9,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.ezt.theme.testmoduleads"
+        applicationId = "com.ezpro.drawmusic.sketchmusic" // trùng app Draw Music: ad unit MAX đăng ký theo package này
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -49,6 +49,14 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.config)
 
-    // Adapter mediation MAX: thêm network đã bật trên dashboard, ví dụ
-    // implementation("com.applovin.mediation:google-adapter:<version>")
+    // Adapter mediation MAX: các network bidding đang bật trên dashboard
+    implementation("com.applovin.mediation:fyber-adapter:8.5.1.0")         // DT Exchange
+    implementation("com.applovin.mediation:google-adapter:25.5.0.0")       // Google (AdMob)
+    implementation("com.applovin.mediation:bidmachine-adapter:3.8.0.1")
+    implementation("com.applovin.mediation:ironsource-adapter:9.8.0.0.0")
+    implementation("com.applovin.mediation:vungle-adapter:7.8.0.0")        // Liftoff
+    implementation("com.applovin.mediation:facebook-adapter:6.22.1.0")     // Meta
+    implementation("com.applovin.mediation:mintegral-adapter:17.2.21.0")
+    implementation("com.applovin.mediation:bytedance-adapter:8.4.0.6.0")   // Pangle
+    implementation("com.applovin.mediation:unityads-adapter:4.22.0.0")
 }

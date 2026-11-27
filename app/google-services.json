@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "929581376643",
-    "project_id": "test-f7f36",
-    "storage_bucket": "test-f7f36.firebasestorage.app"
+    "project_number": "504185347115",
+    "project_id": "ezt-draw-music",
+    "storage_bucket": "ezt-draw-music.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:929581376643:android:c6ef360139fb11d976a7b6",
+        "mobilesdk_app_id": "1:504185347115:android:d410c4b23f2f92dc819e6e",
         "android_client_info": {
-          "package_name": "com.ezt.theme.testmoduleads"
+          "package_name": "com.ezpro.drawmusic.sketchmusic"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA8QIhY0YO8hhI50KlnYOTiN0k_z3NFwiI"
+          "current_key": "AIzaSyAYk4UJk9i8KOIPFAjJfs52-3zFRNIRtMg"
         }
       ],
       "services": {

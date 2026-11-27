@@ -178,6 +178,12 @@ object RewardAds {
             return
         }
         val adUnitId = ids[index]
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.REWARD, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.REWARD, adUnitId, AdsLog.Action.LOAD, reason, null))
+            loadRewardedAd(activity, ids, index + 1, onLoaded, onFailed)
+            return
+        }
         AdsManager.onAdsLog(AdsLog(AdsLog.Type.REWARD, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.START_LOAD, null))
         val ad = MaxRewardedAd.getInstance(adUnitId, activity.applicationContext)
         listener.clearShowCallbacks()
@@ -193,6 +199,7 @@ object RewardAds {
         }
         ad.setListener(listener)
         ad.setRevenueListener { AdsManager.onAdsPair(AdValue(it)) }
+        listener.startLoad()
         ad.loadAd()
     }
 

@@ -22,7 +22,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url = uri("https://jitpack.io") }
-        // Chỉ cần khi dùng adapter tương ứng
+        // SDK của adapter BidMachine / Pangle / Mintegral (chỉ cần khi dùng adapter đó)
+        maven { url = uri("https://artifactory.bidmachine.io/bidmachine") }
         maven { url = uri("https://artifact.bytedance.com/repository/pangle/") }
         maven { url = uri("https://dl-maven-android.mintegral.com/repository/mbridge_android_sdk_oversea") }
     }
@@ -41,14 +42,20 @@ android {
 dependencies {
     implementation("com.github.haidn1609:HdnModuleAdsMax:1.0.0")
 
-    // Adapter mediation: chỉ thêm network đã bật trên dashboard MAX
-    implementation("com.applovin.mediation:google-adapter:+")     // AdMob
-    implementation("com.applovin.mediation:facebook-adapter:+")   // Meta Audience Network
-    implementation("com.applovin.mediation:mintegral-adapter:+")
-    implementation("com.applovin.mediation:bytedance-adapter:+")  // Pangle
+    // Adapter mediation: chỉ thêm network đã bật bidding trên dashboard MAX
+    implementation("com.applovin.mediation:fyber-adapter:8.5.1.0")         // DT Exchange
+    implementation("com.applovin.mediation:google-adapter:25.5.0.0")       // Google (AdMob)
+    implementation("com.applovin.mediation:bidmachine-adapter:3.8.0.1")
+    implementation("com.applovin.mediation:ironsource-adapter:9.8.0.0.0")
+    implementation("com.applovin.mediation:vungle-adapter:7.8.0.0")        // Liftoff
+    implementation("com.applovin.mediation:facebook-adapter:6.22.1.0")     // Meta
+    implementation("com.applovin.mediation:mintegral-adapter:17.2.21.0")
+    implementation("com.applovin.mediation:bytedance-adapter:8.4.0.6.0")   // Pangle
+    implementation("com.applovin.mediation:unityads-adapter:4.22.0.0")
 }
 ```
-Nên ghim version adapter cụ thể thay cho `+` khi release (xem version trên dashboard MAX hoặc Maven Central).
+Version trên là bản mới nhất lúc viết (đã build cùng AppLovin SDK 13.7.0); kiểm tra lại trên Maven Central
+hoặc dashboard MAX khi nâng cấp. Mở `AdsManager.showMediationDebugger(context)` để xem adapter nào đã nhận.
 
 Thư viện đã kéo sẵn AppLovin SDK và UMP (`api`), app không cần khai báo lại.
 
@@ -92,7 +99,7 @@ consent.requestConsentInfoUpdate(activity, ConsentRequestParameters.Builder().bu
         AdsManager.initialize(
             context = activity,
             sdkKey = "<APPLOVIN_SDK_KEY>",
-            testDeviceIds = listOf("<GAID máy test>"), // chỉ cho debug, release để trống
+            testDeviceIds = listOf("<GAID máy test>"), // chỉ dùng khi setDebug(true), release tự bỏ qua
         ) {
             // 4. Bật ads rồi load / show
             AdsManager.setEnabled(consent.canRequestAds())
@@ -113,7 +120,14 @@ Mỗi slot có 2 ID:
 
 MAX **không có ID test công khai** như AdMob: bản debug dùng ID thật. Để nhận quảng cáo test,
 thêm GAID máy test vào `testDeviceIds` khi init (hoặc khai báo trên dashboard MAX → Test Mode).
+`testDeviceIds` chỉ có hiệu lực khi `AdsManager.setDebug(true)` (gọi trước `initialize`): app cứ để danh sách
+GAID cố định, bản release (`setDebug(BuildConfig.DEBUG)` = false) tự bỏ qua.
 ID còn trống thì slot đó chỉ load fail, không crash.
+
+Thư viện kiểm tra trước khi load và fail ngay (log `invalid_sdk_key` / `invalid_ad_unit_id`) khi SDK key
+ngắn hơn 86 ký tự hoặc ad unit không phải 16 ký tự hex: MAX chỉ log lỗi chứ không gọi callback trong
+trường hợp này. Ad unit nào load quá lâu mà MAX không trả kết quả thì sau `AdsManager.setLoadTimeout(ms)`
+(mặc định 15000) cũng coi là fail và thử ID tiếp theo.
 
 ## Usage
 
@@ -181,7 +195,8 @@ AdsManager.showInterSplashAds(
     doneCallBack = { /* đóng / lỗi -> đi tiếp */ }
 )
 
-// Show, kèm dialog native full sau khi đóng
+// Show, kèm dialog native full: 3s sau khi inter hiện thì mở dialog (nằm dưới inter),
+// dialog mở rồi mới load native; user đóng inter thì thấy dialog, đóng dialog mới gọi doneCallBack
 AdsManager.showInterSplashAds(
     activity = activity,
     dialogRes = R.layout.my_native_full, // 0 = layout mặc định của thư viện
@@ -208,7 +223,9 @@ AdsManager.showBannerAds(activity, BannerType.NORMAL, viewContainer, BannerMargi
 Banner adaptive theo bề rộng màn hình, tự refresh. Banner thường được dùng lại giữa các màn cùng bề rộng.
 
 MAX **không có banner collapsible** như AdMob: `BannerType.COLLAPSIBLE` dùng ID riêng nhưng hiển thị
-như banner thường.
+như banner thường, **không expand**. Banner collapsible là tính năng riêng của AdMob (tham số
+`collapsible=bottom` gửi kèm request); qua MAX, adapter Google tự tạo request và không nhận tham số này.
+Cần hiệu ứng mở to / thu nhỏ ở đáy màn hình thì dùng native collapse (vd slot `nt_clp`) thay thế.
 
 ### Reward Ads
 Set id
@@ -262,6 +279,14 @@ Root là view thường (`FrameLayout`, `ConstraintLayout`...), **không** dùng
 | `btnClose` | View | đóng native (do thư viện xử lý) |
 
 Field nào ad không có (body, advertiser, rating...) thì view tương ứng tự ẩn.
+
+Lưu ý khi làm layout:
+- Root giữ đúng kích thước khai báo trong XML (layout full màn để `match_parent` vẫn full màn).
+- `rating_bar` để `wrap_content` thì thư viện đặt cố định 80x16dp cho dải sao (MAX tự gắn view sao kiểu
+  `match_parent`, không giới hạn thì khung sao giãn hết màn và đẩy media/tiêu đề ra ngoài).
+- `media_view` tối thiểu 120x120dp nếu muốn nhận video (AdMob native validator sẽ cảnh báo nếu nhỏ hơn).
+- Layout dialog native full sau splash có thể ghi đè bằng `res/layout/template_native_full.xml`;
+  thiếu id nào cũng không crash.
 
 ```xml
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -339,7 +364,8 @@ AdsManager.adsLog = { log ->
 
 ### Other
 ```kotlin
-AdsManager.setDebug(true)    // log chi tiết của MAX, App Open không chờ 60s giữa 2 lần show
+AdsManager.setDebug(true)    // log chi tiết của MAX, App Open không chờ 60s giữa 2 lần show,
+                             // testDeviceIds có hiệu lực (gọi trước initialize)
 AdsManager.setEnabled(true)  // bật / tắt toàn bộ ads
 AdsManager.setVip(true)      // VIP: không show ads (trừ khi gọi với useWithoutVip = true)
 AdsManager.showMediationDebugger(context) // kiểm tra adapter và network khi tích hợp
@@ -365,25 +391,51 @@ Các hàm show / load / preload và callback giữ nguyên.
 Module `app` có màn test mọi loại ads (open, inter, inter splash, force inter, banner, native, native full,
 native collapse, reward) và nút mở Mediation Debugger.
 
-1. ID lấy từ Firebase Remote Config của project test (`app/google-services.json`, package
-   `com.ezt.theme.testmoduleads`), giống demo HdnModuleAds. Trên console Firebase, khai báo:
+1. SDK key và ID MAX (app "Draw Music Android") có sẵn trong
+   [`MaxTestIds.kt`](app/src/main/java/com/hdn/theme/testmoduleads/MaxTestIds.kt), chạy được ngay.
+   Demo dùng package **`com.ezpro.drawmusic.sketchmusic`** (trùng app Draw Music) vì ad unit MAX đăng ký
+   theo package: package khác thì MAX trả lỗi `INV-REQ-MISSING-APP-ID` / "Ad Unit ID ... is invalid or
+   disabled". Máy đang cài bản Draw Music từ store (khác chữ ký) thì phải gỡ trước khi cài demo.
+   `app/google-services.json` là file Firebase của Draw Music (project `ezt-draw-music`).
+
+   Muốn đổi ID không cần build lại, trên Firebase Remote Config giữ logic demo cũ:
 
    | Key | Giá trị |
    |---|---|
-   | `applovin_sdk_key` | SDK key AppLovin |
-   | `applovin_test_devices` | JSON array GAID máy test, vd `["gaid1"]` |
-   | `using_case_test_value` | tên key chứa JSON ID ads, vd `config_id_ads` |
-   | `config_id_ads` (tên ở trên) | JSON ID MAX, mỗi slot là list (waterfall) |
+   | `using_case_test_value` | tên key chứa JSON ID, vd `config_ads_max` (mặc định) |
+   | `config_ads_max` (tên ở trên) | nội dung [`docs/config_ads_max.json`](docs/config_ads_max.json) |
+
+   Đổi bộ ID test chỉ cần tạo key JSON khác rồi trỏ `using_case_test_value` sang nó. Đây là Firebase của
+   app thật: nên thêm 2 key này theo điều kiện riêng cho bản debug thay vì áp cho mọi người dùng.
 
    ```json
    {
-     "appOpen": ["..."], "interstitial": ["..."], "interSplash": ["..."], "rewarded": ["..."],
-     "banner": ["..."], "bannerCollapse": ["..."],
-     "native": ["..."], "nativeCollapse": ["..."], "nativeDialogFull": ["..."]
+     "sdk_key": "...",
+     "bn_inapp": ["..."], "int_inapp": ["..."], "rv_inapp": ["..."], "nt_inapp": ["..."],
+     "int_splash": ["..."], "nt_lang1": ["..."], "nt_lang2": ["..."], "nt_clp": ["..."],
+     "nt_onb_full": ["..."], "aoa": ["..."]
    }
    ```
-2. Thêm adapter mediation cần test vào `app/build.gradle.kts` (và AdMob App ID vào manifest nếu dùng `google-adapter`).
-3. Chạy `./gradlew :app:installDebug`, xem log với tag `Ads_log` và `Ads_revenue`.
+   Mỗi slot là list ID (waterfall). Slot thiếu hoặc ID không đúng định dạng MAX thì dùng ID mặc định.
+
+   | Slot | Dùng cho nút demo |
+   |---|---|
+   | `aoa` | show opa (App Open) |
+   | `int_inapp` | show ita, show ita fix |
+   | `int_splash` | show itsa |
+   | `rv_inapp` | show rwa |
+   | `bn_inapp` | show bna, show bnca (bnca hiển thị như banner thường) |
+   | `nt_inapp` | show nta1, nta2 |
+   | `nt_clp` | show ntca |
+   | `nt_onb_full` | show nta3, nta4, dialog sau itsa |
+   | `nt_lang1`, `nt_lang2` | native key `native_lang1` / `native_lang2` (chưa có nút) |
+
+   GAID máy test khai báo trong `MaxTestIds.TEST_DEVICE_IDS` (chỉ áp dụng cho bản debug).
+2. Adapter 9 network bidding (DT Exchange, Google, BidMachine, IronSource, Liftoff, Meta, Mintegral,
+   Pangle, Unity) đã có trong `app/build.gradle.kts`. Adapter Google cần AdMob App ID trong manifest.
+3. Chạy `./gradlew :app:installDebug`, mở bằng
+   `adb shell am start -n com.ezpro.drawmusic.sketchmusic/com.hdn.theme.testmoduleads.MainActivity`,
+   xem log với tag `Ads_log` và `Ads_revenue`.
 
 Demo bỏ qua bước consent UMP cho gọn; app thật phải xin consent trước `AdsManager.initialize`.
 Layout native mẫu: `app/src/main/res/layout/template_native_*.xml`.

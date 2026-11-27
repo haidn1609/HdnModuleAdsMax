@@ -12,7 +12,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TestModuleAds">
-        <!-- Dùng google-adapter (AdMob qua MAX) thì thêm meta-data com.google.android.gms.ads.APPLICATION_ID -->
+        <!-- Bắt buộc khi dùng google-adapter (AdMob qua MAX), thiếu là crash lúc mở app.
+             TODO: thay bằng AdMob App ID đã nối với MAX; ID này của demo HdnModuleAds cũ. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-8048589936179473~2309335696" />
 
         <activity
             android:name=".MainActivity"

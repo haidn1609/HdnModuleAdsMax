@@ -69,6 +69,12 @@ object OpenAds {
             return
         }
         val adUnitId = ids[index]
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.OPEN, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.OPEN, adUnitId, AdsLog.Action.LOAD, reason, null))
+            loadOpenAdByIndex(context, ids, index + 1, callback)
+            return
+        }
         AdsManager.onAdsLog(AdsLog(AdsLog.Type.OPEN, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.START_LOAD, null))
         val ad = MaxAppOpenAd(adUnitId, context)
         appOpenAd = ad
@@ -87,6 +93,7 @@ object OpenAds {
         }
         ad.setListener(listener)
         ad.setRevenueListener { AdsManager.onAdsPair(AdValue(it)) }
+        listener.startLoad()
         ad.loadAd()
     }
 

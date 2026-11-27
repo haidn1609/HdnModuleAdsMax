@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initData() {
         AdsManager.setDebug(BuildConfig.DEBUG);
-        AdsManager.setVip(false);
+        AdsManager.setVip(true);
         AdsManager.setEnabled(true);
         AdsManager.setAdsPair(adValue -> {
             Log.e("Ads_revenue", adValue.getNetworkName() + " " + adValue.getRevenue() + " " + adValue.getCurrencyCode());
@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         RemoteManager.initRemoteConfig(() -> {
             Toast.makeText(this, "config done", Toast.LENGTH_SHORT).show();
             // ponytail: demo bỏ qua consent UMP; app thật xin consent trước khi initialize (xem README)
-            AdsManager.initialize(this, RemoteManager.getSdkKey(), RemoteManager.getTestDeviceIds(), () -> {
+            AdsManager.initialize(this, RemoteManager.getSdkKey(), MaxTestIds.TEST_DEVICE_IDS, () -> {
                 Toast.makeText(this, "MAX init done", Toast.LENGTH_SHORT).show();
                 InterAds.initInterAds(this, new ArrayList<>(), false, null, null);
                 InterSplashAds.initInterAds(this, new ArrayList<>(), null);
@@ -73,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "ita show done: " + success, Toast.LENGTH_SHORT).show();
             return null;
         }));
-        binding.showItaFix.setOnClickListener(view -> AdsManager.forceShowInterAds(this, false, false, 1000L, success -> {
+        binding.showItaFix.setOnClickListener(view -> AdsManager.forceShowInterAds(this, true, false, 1000L, success -> {
             Toast.makeText(this, "ita force show done: " + success, Toast.LENGTH_SHORT).show();
             return null;
         }));

@@ -93,6 +93,12 @@ object InterAds {
             return
         }
         val adUnitId = ids[index]
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER, adUnitId, AdsLog.Action.LOAD, reason, null))
+            loadInterstitialByIndex(context, ids, index + 1, onLoadSuccess, onLoadError)
+            return
+        }
         AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.START_LOAD, null))
         val ad = MaxInterstitialAd(adUnitId, context)
         mInterstitialAd = ad
@@ -111,6 +117,7 @@ object InterAds {
         }
         ad.setListener(listener)
         ad.setRevenueListener { AdsManager.onAdsPair(AdValue(it)) }
+        listener.startLoad()
         ad.loadAd()
     }
 

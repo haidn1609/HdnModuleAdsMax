@@ -69,6 +69,12 @@ object InterSplashAds {
             return
         }
         val adUnitId = ids[index]
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER_SPLASH, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER_SPLASH, adUnitId, AdsLog.Action.LOAD, reason, null))
+            loadInterstitialByIndex(context, ids, index + 1, callback)
+            return
+        }
         AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER_SPLASH, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.START_LOAD, null))
         val ad = MaxInterstitialAd(adUnitId, context)
         mInterstitialAd = ad
@@ -87,6 +93,7 @@ object InterSplashAds {
         }
         ad.setListener(listener)
         ad.setRevenueListener { AdsManager.onAdsPair(AdValue(it)) }
+        listener.startLoad()
         ad.loadAd()
     }
 
@@ -224,6 +231,7 @@ object InterSplashAds {
             }
         }
         if (showDialog) {
+            // Như bản gốc: sau 3s mở dialog, dialog mở rồi mới load native (FullScreenDialog.loadAndShow)
             Handler(Looper.getMainLooper()).postDelayed({
                 if (context.isFinishing || context.isDestroyed) return@postDelayed
                 AdsManager.onAdsLog(AdsLog(AdsLog.Type.INTER_SPLASH, "", AdsLog.Action.SHOW_DIALOG_ADS, AdsLog.Mess.CALL_SHOW, null))

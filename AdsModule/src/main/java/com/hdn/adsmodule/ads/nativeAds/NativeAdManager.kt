@@ -2,6 +2,7 @@ package com.hdn.adsmodule.ads.nativeAds
 
 import android.app.Activity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.applovin.mediation.MaxAd
 import com.applovin.mediation.MaxError
@@ -93,6 +94,13 @@ class NativeAdManager(
         }
 
         val adUnitId = adUnitIds[currentIndex]
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(key, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(key, adUnitId, AdsLog.Action.LOAD, reason, null))
+            currentIndex++
+            loadNextAd(activity, mode)
+            return
+        }
         val loader = loaderFor(activity, adUnitId)
 
         loader.setNativeAdListener(object : MaxNativeAdListener() {
@@ -314,8 +322,16 @@ class NativeAdManager(
         adView.bodyTextView?.hideIfEmpty(nativeAd?.body)
         adView.advertiserTextView?.hideIfEmpty(nativeAd?.advertiser)
         adView.callToActionButton?.hideIfEmpty(nativeAd?.callToAction)
-        adView.starRatingContentViewGroup?.visibility =
-            if (nativeAd?.starRating != null) View.VISIBLE else View.GONE
+        adView.starRatingContentViewGroup?.let { rating ->
+            rating.visibility = if (nativeAd?.starRating != null) View.VISIBLE else View.GONE
+            // MAX add view sao MATCH_PARENT x MATCH_PARENT: container wrap_content sẽ giãn hết màn,
+            // đẩy media/title ra ngoài (native trắng). wrap_content -> kích thước cố định của dải sao.
+            val density = activity.resources.displayMetrics.density
+            rating.layoutParams = rating.layoutParams?.apply {
+                if (width == ViewGroup.LayoutParams.WRAP_CONTENT) width = (RATING_WIDTH_DP * density).toInt()
+                if (height == ViewGroup.LayoutParams.WRAP_CONTENT) height = (RATING_HEIGHT_DP * density).toInt()
+            }
+        }
 
         adView.findViewById<View>(R.id.btnClose)?.setOnClickListener {
             AdsManager.onAdsLog(AdsLog(key, "", "ad_click", "close_click", null))
@@ -339,7 +355,15 @@ class NativeAdManager(
         if (has(R.id.media_view)) builder.setMediaContentViewGroupId(R.id.media_view)
         if (has(R.id.rating_bar)) builder.setStarRatingContentViewGroupId(R.id.rating_bar)
         if (has(R.id.ad_options_view)) builder.setOptionsContentViewGroupId(R.id.ad_options_view)
-        return MaxNativeAdView(builder.build(), activity)
+        return MaxNativeAdView(builder.build(), activity).apply {
+            // MaxNativeAdView tự addView(root) không kèm params -> root bị wrap_content, layout full màn
+            // (match_parent + media 0dp/constraint) co về 0. Giữ đúng kích thước root khai báo trong XML.
+            val rootParams = root.layoutParams
+            if (rootParams != null) {
+                layoutParams = FrameLayout.LayoutParams(rootParams.width, rootParams.height)
+                root.layoutParams = FrameLayout.LayoutParams(rootParams.width, rootParams.height)
+            }
+        }
     }
 
     private fun View.hideIfEmpty(text: String?) {
@@ -376,5 +400,11 @@ class NativeAdManager(
     private fun releaseAd(ad: LoadedAd) {
         cachedAds.remove(ad)
         if (activeAds.remove(ad)) ad.loader.destroy(ad.ad)
+    }
+
+    private companion object {
+        // Kích thước dải 5 sao khi layout để rating_bar wrap_content
+        const val RATING_WIDTH_DP = 80
+        const val RATING_HEIGHT_DP = 16
     }
 }

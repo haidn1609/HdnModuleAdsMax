@@ -155,6 +155,12 @@ object BannerAds {
 
         val adUnitId = ids[index]
         val type = logType(bannerType)
+        AdsController.invalidLoadReason(adUnitId)?.let { reason ->
+            AdsManager.onAdsLog(AdsLog(type, adUnitId, AdsLog.Action.LOAD, AdsLog.Mess.LOAD_FAILED, null))
+            AdsManager.onAdsLog(AdsLog(type, adUnitId, AdsLog.Action.LOAD, reason, null))
+            loadBannerByIndex(activity, ids, index + 1, bannerType, widthDp, heightPx, loadingText, loadingOverlay, adViewContainer)
+            return
+        }
         val config = MaxAdViewConfiguration.builder()
             .setAdaptiveType(MaxAdViewConfiguration.AdaptiveType.ANCHORED)
             .setAdaptiveWidth(widthDp)

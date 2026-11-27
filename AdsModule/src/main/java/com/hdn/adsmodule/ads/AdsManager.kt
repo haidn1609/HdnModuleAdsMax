@@ -57,6 +57,7 @@ object AdsManager {
      * Khởi tạo AppLovin MAX (thay cho MobileAds.initialize). Gọi sau khi đã xin consent (UMP):
      * MAX tự đọc chuỗi TCF mà UMP lưu. [onDone] luôn được gọi trên main thread.
      * [testDeviceIds]: GAID của máy test để nhận quảng cáo test (MAX không có ad unit test công khai).
+     * Chỉ có hiệu lực khi [setDebug] true (gọi setDebug trước initialize); bản release bỏ qua.
      */
     @JvmStatic
     @JvmOverloads
@@ -66,11 +67,12 @@ object AdsManager {
         testDeviceIds: List<String> = emptyList(),
         onDone: (() -> Unit)? = null
     ) {
+        AdsController.sdkKey = sdkKey.trim()
         val sdk = AppLovinSdk.getInstance(context.applicationContext)
         sdk.settings.setVerboseLogging(AdsController.isDebug)
         val config = AppLovinSdkInitializationConfiguration.builder(sdkKey)
             .setMediationProvider(AppLovinMediationProvider.MAX)
-            .setTestDeviceAdvertisingIds(testDeviceIds)
+            .setTestDeviceAdvertisingIds(if (AdsController.isDebug) testDeviceIds else emptyList())
             .build()
         sdk.initialize(config) { onDone?.invoke() }
     }
@@ -79,6 +81,13 @@ object AdsManager {
     @JvmStatic
     fun showMediationDebugger(context: Context) {
         AppLovinSdk.getInstance(context.applicationContext).showMediationDebugger()
+    }
+
+    // Thời gian tối đa chờ 1 ad unit load (ms), mặc định 15s. MAX có lúc không báo lỗi (SDK key sai/trống),
+    // hết giờ coi như fail để loading dialog / callback không bị treo.
+    @JvmStatic
+    fun setLoadTimeout(timeMillis: Long) {
+        AdsController.loadTimeoutMs = timeMillis
     }
 
     // Thời gian cooldown giữa 2 lần show inter (ms)

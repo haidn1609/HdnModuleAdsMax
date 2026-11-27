@@ -47,7 +47,10 @@ class LoadingDialog : BaseDialogFragment() {
             val fm = (activity as? AppCompatActivity)?.supportFragmentManager ?: return
             // findFragmentByTag bắt được cả dialog đang chờ commit (isAdded chưa true) -> tránh show chồng
             if (current != null || fm.findFragmentByTag(TAG) != null) return
-            current = LoadingDialog().also { runCatching { it.show(fm, TAG) } }
+            // showNow: add ngay, để dismiss() gọi liền sau (load fail đồng bộ) vẫn tắt được dialog
+            current = LoadingDialog().also { dialog ->
+                runCatching { dialog.showNow(fm, TAG) }.onFailure { runCatching { dialog.show(fm, TAG) } }
+            }
         }
 
         fun dismiss() {
