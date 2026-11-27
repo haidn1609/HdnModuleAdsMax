@@ -14,50 +14,59 @@ và sửa vài chỗ trong mục [Chuyển từ HdnModuleAds](#chuyển-từ-hdn
 
 ## Import
 
-`settings.gradle.kts`:
-```kotlin
+`settings.gradle`:
+```groovy
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://jitpack.io") }
-        // SDK của adapter BidMachine / Pangle / Mintegral (chỉ cần khi dùng adapter đó)
-        maven { url = uri("https://artifactory.bidmachine.io/bidmachine") }
-        maven { url = uri("https://artifact.bytedance.com/repository/pangle/") }
-        maven { url = uri("https://dl-maven-android.mintegral.com/repository/mbridge_android_sdk_oversea") }
+        maven { url 'https://jitpack.io' }
     }
 }
 ```
 
-`app/build.gradle.kts`:
-```kotlin
+`app/build.gradle`:
+```groovy
 android {
     buildFeatures {
-        buildConfig = true
-        dataBinding = true
+        buildConfig true
+        dataBinding true
     }
 }
 
 dependencies {
-    implementation("com.github.haidn1609:HdnModuleAdsMax:1.0.0")
-
-    // Adapter mediation: chỉ thêm network đã bật bidding trên dashboard MAX
-    implementation("com.applovin.mediation:fyber-adapter:8.5.1.0")         // DT Exchange
-    implementation("com.applovin.mediation:google-adapter:25.5.0.0")       // Google (AdMob)
-    implementation("com.applovin.mediation:bidmachine-adapter:3.8.0.1")
-    implementation("com.applovin.mediation:ironsource-adapter:9.8.0.0.0")
-    implementation("com.applovin.mediation:vungle-adapter:7.8.0.0")        // Liftoff
-    implementation("com.applovin.mediation:facebook-adapter:6.22.1.0")     // Meta
-    implementation("com.applovin.mediation:mintegral-adapter:17.2.21.0")
-    implementation("com.applovin.mediation:bytedance-adapter:8.4.0.6.0")   // Pangle
-    implementation("com.applovin.mediation:unityads-adapter:4.22.0.0")
+    implementation 'com.github.haidn1609:HdnModuleAdsMax:v1.0.0'
 }
+```
+
+Thư viện đã kéo sẵn AppLovin SDK và UMP (`api`), app không cần khai báo lại. `google()` cần cho UMP và
+AndroidX (project Android thường đã có sẵn).
+
+### Adapter mediation
+
+Thêm adapter của các network đã bật bidding trên dashboard MAX vào `app/build.gradle`:
+```groovy
+dependencies {
+    implementation 'com.applovin.mediation:fyber-adapter:8.5.1.0'         // DT Exchange
+    implementation 'com.applovin.mediation:google-adapter:25.5.0.0'       // Google (AdMob)
+    implementation 'com.applovin.mediation:bidmachine-adapter:3.8.0.1'
+    implementation 'com.applovin.mediation:ironsource-adapter:9.8.0.0.0'
+    implementation 'com.applovin.mediation:vungle-adapter:7.8.0.0'        // Liftoff
+    implementation 'com.applovin.mediation:facebook-adapter:6.22.1.0'     // Meta
+    implementation 'com.applovin.mediation:mintegral-adapter:17.2.21.0'
+    implementation 'com.applovin.mediation:bytedance-adapter:8.4.0.6.0'   // Pangle
+    implementation 'com.applovin.mediation:unityads-adapter:4.22.0.0'
+}
+```
+BidMachine, Pangle và Mintegral cần thêm repo trong `settings.gradle`:
+```groovy
+maven { url 'https://artifactory.bidmachine.io/bidmachine' }
+maven { url 'https://artifact.bytedance.com/repository/pangle/' }
+maven { url 'https://dl-maven-android.mintegral.com/repository/mbridge_android_sdk_oversea' }
 ```
 Version trên là bản mới nhất lúc viết (đã build cùng AppLovin SDK 13.7.0); kiểm tra lại trên Maven Central
 hoặc dashboard MAX khi nâng cấp. Mở `AdsManager.showMediationDebugger(context)` để xem adapter nào đã nhận.
-
-Thư viện đã kéo sẵn AppLovin SDK và UMP (`api`), app không cần khai báo lại.
 
 ### Manifest
 
@@ -373,7 +382,7 @@ AdsManager.showMediationDebugger(context) // kiểm tra adapter và network khi 
 
 ## Chuyển từ HdnModuleAds (AdMob)
 
-1. Đổi dependency `com.github.haidn1609:HdnModuleAds` → `com.github.haidn1609:HdnModuleAdsMax`.
+1. Đổi dependency `com.github.haidn1609:HdnModuleAds` → `com.github.haidn1609:HdnModuleAdsMax:v1.0.0`.
    Bỏ `play-services-ads` và adapter `com.google.ads.mediation:*`, thêm adapter `com.applovin.mediation:*`.
 2. `MobileAds.initialize(...)` → `AdsManager.initialize(context, sdkKey) { }`.
 3. Đổi ID AdMob sang ID ad unit MAX (Rl và Rm).
@@ -443,8 +452,9 @@ Layout native mẫu: `app/src/main/res/layout/template_native_*.xml`.
 ## Publish (JitPack)
 
 1. Push lên GitHub (`haidn1609/HdnModuleAdsMax`).
-2. Tăng `version` trong `AdsModule/build.gradle.kts` nếu cần, tạo tag trùng version (vd `1.0.0`).
-3. JitPack build theo `jitpack.yml`; app dùng `com.github.haidn1609:HdnModuleAdsMax:<tag>`.
+2. Tạo tag theo version, vd `v1.0.0` (nên tăng `version` trong `AdsModule/build.gradle.kts` cho khớp).
+3. JitPack build theo `jitpack.yml`; app dùng `com.github.haidn1609:HdnModuleAdsMax:<tag>`
+   (vd `com.github.haidn1609:HdnModuleAdsMax:v1.0.0`).
 
 Build và test local:
 ```bash
